@@ -11947,29 +11947,39 @@ import DOMPurify from 'dompurify';
     };
 
     Highcharts.chart = function (a, b, c) {
-
-        if (typeof obj === 'string') 
-        {
-            b = DOMPurify.sanitize(obj); // Sanitize strings
-        }
-
-        if (Array.isArray(obj)) 
-        {
-            b = obj.map(sanitizeOptions); // Recursively sanitize array elements
-        }
-        
-        if (typeof obj === 'object' && obj !== null) 
-        {
-            const sanitizedObj = {};
-            for (const key in obj) {
-                if (Object.hasOwn(obj, key)) {
-                    sanitizedObj[key] = sanitizeOptions(obj[key]);
-                }
+            // Check if DOMPurify is available
+            if (typeof window.DOMPurify === 'undefined') {
+                console.error('DOMPurify is not loaded. Please include it via CDN or local file.');
+                return;
             }
-            b = sanitizedObj;
-        }
 
-        return new Chart(a, b, c);
+            // Sanitize the options object (b) before creating a new Chart
+            var sanitizedOptions = sanitizeOptions(b);
+            console.log('Sanitized Chart Options:', sanitizedOptions); // Log the sanitized options for debugging
+
+            // Create and return the sanitized chart
+            return new Chart(a, sanitizedOptions, c);
+
+            // Sanitization function to recursively sanitize all properties
+            function sanitizeOptions(obj) 
+            {
+                if (typeof obj === 'string') {
+                    return DOMPurify.sanitize(obj); // Sanitize strings
+                }
+                if (Array.isArray(obj)) {
+                    return obj.map(sanitizeOptions); // Recursively sanitize arrays
+                }
+                if (typeof obj === 'object' && obj !== null) {
+                    const sanitizedObj = {};
+                    for (const key in obj) {
+                        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                            sanitizedObj[key] = sanitizeOptions(obj[key]); // Recursively sanitize objects
+                        }
+                    }
+                    return sanitizedObj;
+                }
+                return obj; // Return non-string, non-object types as-is
+            }
     };
 
     Chart.prototype = {
