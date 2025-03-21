@@ -413,6 +413,12 @@
                 }
 
                 for (key in original) {
+                    
+                    // Prototype pollution (#14883)
+                    if (key === '__proto__' || key === 'constructor') {
+                        return;
+                    }
+
                     if (original.hasOwnProperty(key)) {
                         value = original[key];
 
