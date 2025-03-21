@@ -3559,6 +3559,7 @@
                         if (span !== '' || spans.length === 1) {
                             var attributes = {},
                                 tspan = doc.createElementNS(SVG_NS, 'tspan'),
+                                a,
                                 styleAttribute,
                                 hrefAttribute; // #390
 
@@ -3568,12 +3569,24 @@
                                 attr(tspan, 'style', styleAttribute);
                             }
                             
+                            // For anchors, wrap the tspan in an <a> tag and apply
+                            // the href attribute as is (#13559). Not for export
+                            // (#1529)
                             hrefAttribute = parseAttribute(span, 'href');
 
                             if (hrefAttribute && !forExport) { 
-                                // Not for export - #1529
-                                attr(tspan, 'onclick', 'location.href=\"' + hrefAttribute + '\"');
-                                css(tspan, { cursor: 'pointer' });
+                                if (
+                                    // Stop JavaScript links, vulnerable to XSS
+                                    hrefAttribute.split(':')[0].toLowerCase()
+                                        .indexOf('javascript') === -1) {
+                                        a = doc.createElementNS(renderer.SVG_NS, 'a');
+                                        attr(a, 'href', hrefAttribute);
+                                        attr(tspan, 'class', 'highcharts-anchor');
+                                        a.appendChild(tspan);
+                                        if (!renderer.styledMode) {
+                                            css(tspan, { cursor: 'pointer' });
+                                        }
+                                }
                             }
 
                             span = unescapeAngleBrackets(span.replace(/<(.|\n)*?>/g, '') || ' ');
@@ -3596,7 +3609,7 @@
                                 attr(tspan, attributes);
 
                                 // Append it
-                                textNode.appendChild(tspan);
+                                textNode.appendChild(a || tspan);
 
                                 // first span on subsequent line, add the line height
                                 if (!spanNo && lineNo) {
