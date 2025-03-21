@@ -8,7 +8,6 @@
  *
  * License: www.highcharts.com/license
  */
-import DOMPurify from 'dompurify';
 
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
@@ -3473,8 +3472,6 @@ import DOMPurify from 'dompurify';
                 hasMarkup = textStr.indexOf('<') !== -1,
                 lines,
                 childNodes = textNode.childNodes,
-                styleRegex,
-                hrefRegex,
                 parentX = attr(textNode, 'x'),
                 textStyles = wrapper.styles,
                 width = wrapper.textWidth,
@@ -3495,6 +3492,23 @@ import DOMPurify from 'dompurify';
                 },
                 unescapeAngleBrackets = function (inputStr) {
                     return inputStr.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+                },
+                parseAttribute = function (s, attr) {
+                    var start,
+                        delimiter;
+    
+                    start = s.indexOf('<');
+                    s = s.substring(start, s.indexOf('>') - start);
+    
+                    start = s.indexOf(attr + '=');
+                    if (start !== -1) {
+                        start = start + attr.length + 1;
+                        delimiter = s.charAt(start);
+                        if (delimiter === '"' || delimiter === "'") { // eslint-disable-line quotes
+                            s = s.substring(start + 1);
+                            return s.substring(0, s.indexOf(delimiter));
+                        }
+                    }
                 };
 
             /// remove old text
@@ -3509,9 +3523,6 @@ import DOMPurify from 'dompurify';
 
             // Complex strings, add more logic
             } else {
-
-                styleRegex = /<.*style="([^"]+)".*>/;
-                hrefRegex = /<.*href="(http[^"]+)".*>/;
 
                 if (tempParent) {
                     tempParent.appendChild(textNode); // attach it to the DOM to read offset width
@@ -3548,13 +3559,20 @@ import DOMPurify from 'dompurify';
                         if (span !== '' || spans.length === 1) {
                             var attributes = {},
                                 tspan = doc.createElementNS(SVG_NS, 'tspan'),
-                                spanStyle; // #390
-                            if (styleRegex.test(span)) {
-                                spanStyle = span.match(styleRegex)[1].replace(/(;| |^)color([ :])/, '$1fill$2');
-                                attr(tspan, 'style', spanStyle);
+                                styleAttribute,
+                                hrefAttribute; // #390
+
+                            styleAttribute = parseAttribute(span, 'style');
+                            if (styleAttribute) {
+                                styleAttribute = styleAttribute.replace(/(;| |^)color([ :])/, '$1fill$2');
+                                attr(tspan, 'style', styleAttribute);
                             }
-                            if (hrefRegex.test(span) && !forExport) { // Not for export - #1529
-                                attr(tspan, 'onclick', 'location.href=\"' + span.match(hrefRegex)[1] + '\"');
+                            
+                            hrefAttribute = parseAttribute(span, 'href');
+
+                            if (hrefAttribute && !forExport) { 
+                                // Not for export - #1529
+                                attr(tspan, 'onclick', 'location.href=\"' + hrefAttribute + '\"');
                                 css(tspan, { cursor: 'pointer' });
                             }
 
@@ -3660,8 +3678,8 @@ import DOMPurify from 'dompurify';
                                                     dy: dy,
                                                     x: parentX
                                                 });
-                                                if (spanStyle) { // #390
-                                                    attr(tspan, 'style', spanStyle);
+                                                if (styleAttribute) { // #390
+                                                    attr(tspan, 'style', styleAttribute);
                                                 }
                                                 textNode.appendChild(tspan);
                                             }
